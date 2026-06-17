@@ -110,6 +110,12 @@
   const NOISE_BASE_GAIN = 0.3;
   const NOISE_MIN_FACTOR = 0.1;
 
+  // Balayage de la tonalité pour distinguer les phases à l'oreille :
+  // le son s'éclaircit (filtre qui monte) à l'inspiration,
+  // s'assombrit (filtre qui descend) à l'expiration.
+  const FILTER_LOW = 250;
+  const FILTER_HIGH = 500;
+
   let noiseSource = null;
   let noiseFilter = null;
   let noiseGain = null;
@@ -144,7 +150,7 @@
     noiseSource.loop = true;
     noiseFilter = ctx.createBiquadFilter();
     noiseFilter.type = "lowpass";
-    noiseFilter.frequency.value = 380;
+    noiseFilter.frequency.value = FILTER_LOW;
     noiseGain = ctx.createGain();
     noiseGain.gain.value = 0;
     noiseSource.connect(noiseFilter);
@@ -187,6 +193,20 @@
       factor = NOISE_MIN_FACTOR;
     }
     noiseGain.gain.value = NOISE_BASE_GAIN * factor;
+
+    if (noiseFilter) {
+      let cutoff;
+      if (phase.name === "inhale") {
+        cutoff = FILTER_LOW + (FILTER_HIGH - FILTER_LOW) * t; // monte
+      } else if (phase.name === "exhale") {
+        cutoff = FILTER_HIGH - (FILTER_HIGH - FILTER_LOW) * t; // descend
+      } else if (phase.name === "hold") {
+        cutoff = FILTER_HIGH; // pause après inspiration : reste clair
+      } else {
+        cutoff = FILTER_LOW; // pause après expiration : reste sombre
+      }
+      noiseFilter.frequency.value = cutoff;
+    }
   }
 
   function setPhaseVisual(phase) {
