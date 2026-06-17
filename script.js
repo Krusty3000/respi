@@ -35,6 +35,33 @@
   let running = false;
   let currentPhaseIndex = -1;
   let currentCycle = 0;
+  let wakeLock = null;
+
+  async function requestWakeLock() {
+    if (!("wakeLock" in navigator)) return;
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+    } catch (err) {
+      wakeLock = null;
+    }
+  }
+
+  async function releaseWakeLock() {
+    if (wakeLock) {
+      try {
+        await wakeLock.release();
+      } catch (err) {
+        /* already released */
+      }
+      wakeLock = null;
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && running && !wakeLock) {
+      requestWakeLock();
+    }
+  });
 
   function getActiveDurations() {
     if (presetSelect.value === "custom") {
@@ -158,6 +185,7 @@
 
   function finishSession() {
     running = false;
+    releaseWakeLock();
     cyclesValueEl.textContent = `${totalCycles} / ${totalCycles}`;
     formatTime(0);
     phaseText.textContent = "Terminé";
@@ -191,12 +219,14 @@
     pauseBtn.textContent = "Pause";
     resetBtn.disabled = false;
     setControlsDisabled(true);
+    requestWakeLock();
     tickHandle = requestAnimationFrame(tick);
   }
 
   function pause() {
     running = false;
     if (tickHandle) cancelAnimationFrame(tickHandle);
+    releaseWakeLock();
     pauseBtn.textContent = "Reprendre";
     pauseBtn.onclick = resume;
   }
@@ -206,12 +236,14 @@
     lastTickAt = performance.now();
     pauseBtn.textContent = "Pause";
     pauseBtn.onclick = pause;
+    requestWakeLock();
     tickHandle = requestAnimationFrame(tick);
   }
 
   function reset() {
     running = false;
     if (tickHandle) cancelAnimationFrame(tickHandle);
+    releaseWakeLock();
     elapsedMs = 0;
     currentPhaseIndex = -1;
     currentCycle = 0;
