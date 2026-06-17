@@ -4,6 +4,7 @@
   const inhaleInput = document.getElementById("inhale");
   const holdInput = document.getElementById("hold");
   const exhaleInput = document.getElementById("exhale");
+  const hold2Input = document.getElementById("hold2");
   const durationSelect = document.getElementById("duration");
   const soundToggle = document.getElementById("soundToggle");
 
@@ -69,16 +70,18 @@
         inhale: Math.max(1, Number(inhaleInput.value) || 1),
         hold: Math.max(0, Number(holdInput.value) || 0),
         exhale: Math.max(1, Number(exhaleInput.value) || 1),
+        hold2: Math.max(0, Number(hold2Input.value) || 0),
       };
     }
     return PRESETS[presetSelect.value];
   }
 
   function buildPhases() {
-    const { inhale, hold, exhale } = getActiveDurations();
+    const { inhale, hold, exhale, hold2 = 0 } = getActiveDurations();
     const list = [{ name: "inhale", duration: inhale, label: "Inspirez" }];
-    if (hold > 0) list.push({ name: "hold", duration: hold, label: "Retenez" });
+    if (hold > 0) list.push({ name: "hold", duration: hold, label: "Pause" });
     list.push({ name: "exhale", duration: exhale, label: "Expirez" });
+    if (hold2 > 0) list.push({ name: "hold2", duration: hold2, label: "Pause" });
     return list;
   }
 
@@ -178,14 +181,16 @@
       factor = NOISE_MIN_FACTOR + (1 - NOISE_MIN_FACTOR) * t;
     } else if (phase.name === "exhale") {
       factor = 1 - (1 - NOISE_MIN_FACTOR) * t;
-    } else {
+    } else if (phase.name === "hold") {
       factor = 1;
+    } else {
+      factor = NOISE_MIN_FACTOR;
     }
     noiseGain.gain.value = NOISE_BASE_GAIN * factor;
   }
 
   function setPhaseVisual(phase) {
-    circle.classList.remove("inhale", "hold", "exhale");
+    circle.classList.remove("inhale", "hold", "exhale", "hold2");
     circle.classList.add(phase.name);
     phaseText.textContent = phase.label;
   }
@@ -247,7 +252,7 @@
     cyclesValueEl.textContent = `${totalCycles} / ${totalCycles}`;
     formatTime(0);
     phaseText.textContent = "Terminé";
-    circle.classList.remove("inhale", "hold", "exhale");
+    circle.classList.remove("inhale", "hold", "exhale", "hold2");
     startBtn.disabled = false;
     startBtn.textContent = "Recommencer";
     pauseBtn.disabled = true;
@@ -260,6 +265,7 @@
     inhaleInput.disabled = disabled;
     holdInput.disabled = disabled;
     exhaleInput.disabled = disabled;
+    hold2Input.disabled = disabled;
     durationSelect.disabled = disabled;
   }
 
@@ -309,7 +315,7 @@
     elapsedMs = 0;
     currentPhaseIndex = -1;
     currentCycle = 0;
-    circle.classList.remove("inhale", "hold", "exhale");
+    circle.classList.remove("inhale", "hold", "exhale", "hold2");
     phaseText.textContent = "Prêt";
     recompute();
     startBtn.disabled = false;
@@ -327,7 +333,7 @@
   }
 
   presetSelect.addEventListener("change", onPresetChange);
-  [inhaleInput, holdInput, exhaleInput, durationSelect].forEach((el) =>
+  [inhaleInput, holdInput, exhaleInput, hold2Input, durationSelect].forEach((el) =>
     el.addEventListener("change", recompute)
   );
 

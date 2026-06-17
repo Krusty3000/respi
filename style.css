@@ -85,10 +85,16 @@ main {
 }
 
 .circle.hold {
+  transform: scale(1.15);
   box-shadow: 0 0 60px rgba(127, 219, 218, 0.6);
 }
 
 .circle.exhale {
+  transform: scale(0.75);
+  box-shadow: 0 0 30px rgba(127, 219, 218, 0.25);
+}
+
+.circle.hold2 {
   transform: scale(0.75);
   box-shadow: 0 0 30px rgba(127, 219, 218, 0.25);
 }
@@ -169,7 +175,7 @@ select option {
 
 .custom-fields {
   display: none;
-  flex-direction: row;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -178,7 +184,8 @@ select option {
 }
 
 .field {
-  flex: 1;
+  flex: 1 1 calc(50% - 5px);
+  min-width: 100px;
   display: flex;
   flex-direction: column;
   gap: 4px;
