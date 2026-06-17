@@ -3,6 +3,7 @@
 }
 
 :root {
+  color-scheme: dark;
   --bg-top: #0f2027;
   --bg-mid: #203a43;
   --bg-bottom: #2c5364;
@@ -159,6 +160,11 @@ select, input[type="number"] {
 
 select:focus, input[type="number"]:focus {
   outline: 1px solid var(--accent);
+}
+
+select option {
+  background-color: var(--bg-mid);
+  color: var(--text);
 }
 
 .custom-fields {

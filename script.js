@@ -85,7 +85,7 @@
   function recompute() {
     phases = buildPhases();
     cycleDuration = phases.reduce((sum, p) => sum + p.duration, 0);
-    sessionDuration = Number(durationSelect.value);
+    sessionDuration = Math.max(1, Number(durationSelect.value) || 5) * 60;
     totalCycles = Math.max(1, Math.floor(sessionDuration / cycleDuration));
     if (!running) {
       formatTime(sessionDuration);
@@ -100,33 +100,88 @@
     timeRemainingEl.textContent = `${m}:${r}`;
   }
 
+  const NOISE_BASE_GAIN = 0.3;
+  const NOISE_MIN_FACTOR = 0.1;
+
+  let noiseSource = null;
+  let noiseFilter = null;
+  let noiseGain = null;
+
   function ensureAudio() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
     return audioCtx;
   }
 
-  function playTone(freq, durationMs) {
-    if (!soundToggle.checked) return;
-    const ctx = ensureAudio();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durationMs / 1000);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + durationMs / 1000);
+  function createBreathNoiseBuffer(ctx) {
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let lastOut = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      lastOut = (lastOut + 0.02 * white) / 1.02;
+      data[i] = lastOut * 3.5;
+    }
+    return buffer;
   }
 
-  function toneForPhase(name) {
-    if (name === "inhale") playTone(440, 300);
-    else if (name === "exhale") playTone(330, 300);
-    else playTone(550, 200);
+  function startNoise() {
+    const ctx = ensureAudio();
+    noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = createBreathNoiseBuffer(ctx);
+    noiseSource.loop = true;
+    noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = "lowpass";
+    noiseFilter.frequency.value = 500;
+    noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0;
+    noiseSource.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noiseSource.start();
+  }
+
+  function stopNoise() {
+    if (noiseSource) {
+      try {
+        noiseSource.stop();
+      } catch (err) {
+        /* already stopped */
+      }
+      noiseSource.disconnect();
+      noiseSource = null;
+    }
+    if (noiseFilter) {
+      noiseFilter.disconnect();
+      noiseFilter = null;
+    }
+    if (noiseGain) {
+      noiseGain.disconnect();
+      noiseGain = null;
+    }
+  }
+
+  function updateNoiseVolume(phase, timeIntoPhase) {
+    if (!noiseGain) return;
+    if (!soundToggle.checked) {
+      noiseGain.gain.value = 0;
+      return;
+    }
+    const t = Math.min(1, Math.max(0, timeIntoPhase / phase.duration));
+    let factor;
+    if (phase.name === "inhale") {
+      factor = NOISE_MIN_FACTOR + (1 - NOISE_MIN_FACTOR) * t;
+    } else if (phase.name === "exhale") {
+      factor = 1 - (1 - NOISE_MIN_FACTOR) * t;
+    } else {
+      factor = 1;
+    }
+    noiseGain.gain.value = NOISE_BASE_GAIN * factor;
   }
 
   function setPhaseVisual(phase) {
@@ -177,8 +232,10 @@
     if (globalPhaseKey !== currentPhaseIndex) {
       currentPhaseIndex = globalPhaseKey;
       setPhaseVisual(phases[phaseIdx]);
-      toneForPhase(phases[phaseIdx].name);
     }
+
+    const timeIntoPhase = timeIntoCycle - acc;
+    updateNoiseVolume(phases[phaseIdx], timeIntoPhase);
 
     tickHandle = requestAnimationFrame(tick);
   }
@@ -186,6 +243,7 @@
   function finishSession() {
     running = false;
     releaseWakeLock();
+    stopNoise();
     cyclesValueEl.textContent = `${totalCycles} / ${totalCycles}`;
     formatTime(0);
     phaseText.textContent = "Terminé";
@@ -220,6 +278,7 @@
     resetBtn.disabled = false;
     setControlsDisabled(true);
     requestWakeLock();
+    startNoise();
     tickHandle = requestAnimationFrame(tick);
   }
 
@@ -227,6 +286,7 @@
     running = false;
     if (tickHandle) cancelAnimationFrame(tickHandle);
     releaseWakeLock();
+    stopNoise();
     pauseBtn.textContent = "Reprendre";
     pauseBtn.onclick = resume;
   }
@@ -237,6 +297,7 @@
     pauseBtn.textContent = "Pause";
     pauseBtn.onclick = pause;
     requestWakeLock();
+    startNoise();
     tickHandle = requestAnimationFrame(tick);
   }
 
@@ -244,6 +305,7 @@
     running = false;
     if (tickHandle) cancelAnimationFrame(tickHandle);
     releaseWakeLock();
+    stopNoise();
     elapsedMs = 0;
     currentPhaseIndex = -1;
     currentCycle = 0;
