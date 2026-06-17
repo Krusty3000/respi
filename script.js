@@ -113,8 +113,8 @@
   // Balayage de la tonalité pour distinguer les phases à l'oreille :
   // le son s'éclaircit (filtre qui monte) à l'inspiration,
   // s'assombrit (filtre qui descend) à l'expiration.
-  const FILTER_LOW = 200;
-  const FILTER_HIGH = 600;
+  const FILTER_LOW = 150;
+  const FILTER_HIGH = 700;
 
   let noiseSource = null;
   let noiseFilter = null;
