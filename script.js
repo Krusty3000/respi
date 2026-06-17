@@ -144,7 +144,7 @@
     noiseSource.loop = true;
     noiseFilter = ctx.createBiquadFilter();
     noiseFilter.type = "lowpass";
-    noiseFilter.frequency.value = 500;
+    noiseFilter.frequency.value = 380;
     noiseGain = ctx.createGain();
     noiseGain.gain.value = 0;
     noiseSource.connect(noiseFilter);
