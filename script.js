@@ -177,12 +177,8 @@
     }
     const t = Math.min(1, Math.max(0, timeIntoPhase / phase.duration));
     let factor;
-    if (phase.name === "inhale") {
-      factor = NOISE_MIN_FACTOR + (1 - NOISE_MIN_FACTOR) * t;
-    } else if (phase.name === "exhale") {
-      factor = 1 - (1 - NOISE_MIN_FACTOR) * t;
-    } else if (phase.name === "hold") {
-      factor = 1;
+    if (phase.name === "inhale" || phase.name === "exhale") {
+      factor = NOISE_MIN_FACTOR + (1 - NOISE_MIN_FACTOR) * Math.sin(Math.PI * t);
     } else {
       factor = NOISE_MIN_FACTOR;
     }
