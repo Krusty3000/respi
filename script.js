@@ -64,13 +64,17 @@
     }
   });
 
+  const DEFAULT_PAUSE = 0.25;
+
   function getActiveDurations() {
     if (presetSelect.value === "custom") {
+      const hold = Math.max(0, Number(holdInput.value) || 0);
+      const hold2 = Math.max(0, Number(hold2Input.value) || 0);
       return {
         inhale: Math.max(1, Number(inhaleInput.value) || 1),
-        hold: Math.max(0, Number(holdInput.value) || 0),
+        hold: hold > 0 ? hold : DEFAULT_PAUSE,
         exhale: Math.max(1, Number(exhaleInput.value) || 1),
-        hold2: Math.max(0, Number(hold2Input.value) || 0),
+        hold2: hold2 > 0 ? hold2 : DEFAULT_PAUSE,
       };
     }
     return PRESETS[presetSelect.value];
